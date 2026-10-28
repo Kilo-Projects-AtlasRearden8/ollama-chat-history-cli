@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ollama-chat-history"
+version = "0.1.0"
+description = "Local-first CLI to search, export, and manage Ollama chat history stored as JSON"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Asdale Dynamics, LLC"}]
+keywords = ["ollama", "cli", "local-ai", "chat-history", "markdown"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+ollama-chat-history = "ollama_chat_history.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ollama_chat_history*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
