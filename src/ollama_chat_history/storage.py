@@ -80,6 +80,15 @@ class ChatStore:
         if os.path.exists(self.path):
             os.remove(self.path)
 
+    def remove(self, chat_id: str) -> bool:
+        """Remove the record with ``chat_id``. Returns True if removed."""
+        records = self.load()
+        remaining = [r for r in records if r.chat_id != chat_id]
+        if len(remaining) == len(records):
+            return False
+        self.save(remaining)
+        return True
+
     def by_id(self, chat_id: str) -> ChatRecord | None:
         for record in self.load():
             if record.chat_id == chat_id:

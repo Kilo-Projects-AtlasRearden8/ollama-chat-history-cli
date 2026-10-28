@@ -43,3 +43,17 @@ def test_empty_store_returns_empty_list(tmp_path):
     path = tmp_path / "empty.json"
     store = ChatStore(str(path))
     assert store.load() == []
+
+
+def test_remove(store):
+    store.save(
+        [
+            ChatRecord("c1", "One", "m", "2026-01-01", "2026-01-01"),
+            ChatRecord("c2", "Two", "m", "2026-01-02", "2026-01-02"),
+        ]
+    )
+    assert store.remove("c1") is True
+    assert store.by_id("c1") is None
+    assert store.by_id("c2") is not None
+    assert store.remove("missing") is False
+

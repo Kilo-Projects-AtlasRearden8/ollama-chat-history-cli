@@ -25,6 +25,23 @@ def _print_records(records: Iterable[ChatRecord]) -> None:
         print(f"   messages: {len(record.messages)}")
 
 
+def _print_chat(record: ChatRecord) -> None:
+    print(f"{record.title or 'Untitled chat'} [{record.model or 'unknown'}]")
+    print(f"id: {record.chat_id}")
+    print(f"created: {record.created_at}")
+    print(f"updated: {record.updated_at}")
+    print(f"messages: {len(record.messages)}")
+    print("")
+    if record.messages:
+        for message in record.messages:
+            role = message.get("role", "unknown")
+            content = message.get("content", "")
+            print(f"{role}: {content}")
+            print("")
+    else:
+        print("(no messages stored)")
+
+
 def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="ollama-chat-history",
@@ -44,14 +61,14 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     sub = parser.add_subparsers(dest="command", required=True)
 
     sync_p = sub.add_parser("sync", help="Fetch chats from Ollama into the local store")
-    sync_p.add_argument(
-        "--all",
-        dest="fetch_all",
-        action="store_true",
-        help="Fetch full chat records, not just summaries",
-    )
 
     sub.add_parser("list", help="List chats in the local store")
+
+    show_p = sub.add_parser("show", help="Print a stored chat's full content")
+    show_p.add_argument("chat_id", help="Chat ID to display")
+
+    delete_p = sub.add_parser("delete", help="Remove a chat from the local store")
+    delete_p.add_argument("chat_id", help="Chat ID to remove")
 
     search_p = sub.add_parser("search", help="Search local chat store")
     search_p.add_argument("--keyword", help="Case-insensitive keyword match")
@@ -82,31 +99,18 @@ def _cmd_sync(args: argparse.Namespace) -> int:
 
     store = ChatStore(args.store)
     try:
-        if args.fetch_all:
-            chats = client.fetch_all()
-            records = [
-                ChatRecord(
-                    chat_id=c.chat_id,
-                    title=c.title,
-                    model=c.model,
-                    created_at=c.created_at,
-                    updated_at=c.updated_at,
-                    messages=c.messages,
-                )
-                for c in chats
-            ]
-        else:
-            summaries = client.list_chats()
-            records = [
-                ChatRecord(
-                    chat_id=s.chat_id,
-                    title=s.title,
-                    model=s.model,
-                    created_at=s.created_at,
-                    updated_at=s.updated_at,
-                )
-                for s in summaries
-            ]
+        chats = client.fetch_all()
+        records = [
+            ChatRecord(
+                chat_id=c.chat_id,
+                title=c.title,
+                model=c.model,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+                messages=c.messages,
+            )
+            for c in chats
+        ]
     except OllamaError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -119,6 +123,28 @@ def _cmd_sync(args: argparse.Namespace) -> int:
 def _cmd_list(args: argparse.Namespace) -> int:
     store = ChatStore(args.store)
     _print_records(store.load())
+    return 0
+
+
+def _cmd_show(args: argparse.Namespace) -> int:
+    store = ChatStore(args.store)
+    record = store.by_id(args.chat_id)
+    if record is None:
+        print(f"error: chat {args.chat_id} not found in {args.store}", file=sys.stderr)
+        return 1
+    _print_chat(record)
+    return 0
+
+
+def _cmd_delete(args: argparse.Namespace) -> int:
+    store = ChatStore(args.store)
+    if not store.by_id(args.chat_id):
+        print(f"error: chat {args.chat_id} not found in {args.store}", file=sys.stderr)
+        return 1
+    if not store.remove(args.chat_id):
+        print(f"error: chat {args.chat_id} not found in {args.store}", file=sys.stderr)
+        return 1
+    print(f"Deleted chat {args.chat_id} from {args.store}")
     return 0
 
 
@@ -154,6 +180,8 @@ def _cmd_export(args: argparse.Namespace) -> int:
 _COMMANDS = {
     "sync": _cmd_sync,
     "list": _cmd_list,
+    "show": _cmd_show,
+    "delete": _cmd_delete,
     "search": _cmd_search,
     "export": _cmd_export,
 }
